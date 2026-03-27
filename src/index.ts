@@ -14,23 +14,7 @@ const PORT = process.env.PORT || 3001;
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      const allowed = [
-        process.env.CLIENT_URL,
-        "https://schedully-front.vercel.app",
-        "http://localhost:5173",
-      ].filter(Boolean);
-
-      // Allow requests with no origin (mobile apps, Postman, etc.)
-      if (!origin) return callback(null, true);
-
-      if (allowed.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.log("CORS blocked:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: true,
     credentials: true,
   }),
 );
