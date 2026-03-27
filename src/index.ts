@@ -17,8 +17,8 @@ app.use(
     origin: (origin, callback) => {
       const allowed = [
         process.env.CLIENT_URL,
+        "https://schedully-front.vercel.app",
         "http://localhost:5173",
-        "http://localhost:3000",
       ].filter(Boolean);
 
       // Allow requests with no origin (mobile apps, Postman, etc.)
