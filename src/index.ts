@@ -9,6 +9,14 @@ import billingRoutes, { webhookHandler } from "./routes/billing";
 
 dotenv.config();
 
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Rejection:", reason);
+});
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
