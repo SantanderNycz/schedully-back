@@ -1,13 +1,13 @@
 import { Resend } from "resend";
 
-function getResend() {
-  return new Resend(process.env.RESEND_API_KEY!);
-}
-
-export { getResend };
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.EMAIL_FROM || "Schedully <noreply@schedully.app>";
+
+// Lazy init — only instantiated when actually sending, not at startup
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -17,9 +17,9 @@ export interface BookingEmailData {
   ownerEmail: string;
   businessName: string;
   serviceName: string;
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:MM
-  endTime: string; // HH:MM
+  date: string;
+  startTime: string;
+  endTime: string;
   price: string;
   notes?: string;
 }
@@ -57,22 +57,16 @@ function layout(title: string, body: string) {
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
-
-          <!-- Logo -->
           <tr>
             <td style="padding-bottom:32px;">
               <span style="font-size:22px;font-style:italic;font-weight:700;color:#f59e0b;letter-spacing:-0.5px;">Schedully</span>
             </td>
           </tr>
-
-          <!-- Card -->
           <tr>
             <td style="background:#1a1d27;border:1px solid #2a2d3a;border-radius:12px;padding:32px;">
               ${body}
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
             <td style="padding-top:24px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#4a4d5a;">
@@ -80,7 +74,6 @@ function layout(title: string, body: string) {
               </p>
             </td>
           </tr>
-
         </table>
       </td>
     </tr>
@@ -108,7 +101,7 @@ function summaryTable(d: BookingEmailData) {
   </table>`;
 }
 
-// ─── Email: booking created → client ──────────────────────────────────────
+// ─── HTML templates ────────────────────────────────────────────────────────
 
 function bookingCreatedClientHtml(d: BookingEmailData) {
   return layout(
@@ -119,17 +112,13 @@ function bookingCreatedClientHtml(d: BookingEmailData) {
       Hi <strong style="color:#e5e7eb;">${d.clientName}</strong>, your booking at
       <strong style="color:#f59e0b;">${d.businessName}</strong> is pending confirmation.
     </p>
-
     ${summaryTable(d)}
-
     <p style="margin:0;font-size:13px;color:#6b7280;">
       You'll receive another email once the business confirms your appointment.
     </p>
   `,
   );
 }
-
-// ─── Email: new booking → owner ────────────────────────────────────────────
 
 function bookingCreatedOwnerHtml(d: BookingEmailData) {
   return layout(
@@ -140,17 +129,13 @@ function bookingCreatedOwnerHtml(d: BookingEmailData) {
       <strong style="color:#e5e7eb;">${d.clientName}</strong> (${d.clientEmail}) just booked
       <strong style="color:#f59e0b;">${d.serviceName}</strong>.
     </p>
-
     ${summaryTable(d)}
-
     <p style="margin:0;font-size:13px;color:#6b7280;">
       Log into your dashboard to confirm or cancel this booking.
     </p>
   `,
   );
 }
-
-// ─── Email: status updated → client ────────────────────────────────────────
 
 function bookingStatusHtml(
   d: BookingEmailData,
@@ -161,22 +146,18 @@ function bookingStatusHtml(
   const title = isConfirmed ? "Booking confirmed" : "Booking cancelled";
   const message = isConfirmed
     ? `Your appointment at <strong style="color:#f59e0b;">${d.businessName}</strong> has been confirmed. See you there!`
-    : `Your appointment at <strong style="color:#f59e0b;">${d.businessName}</strong> has been cancelled. Please contact the business if you have questions.`;
+    : `Your appointment at <strong style="color:#f59e0b;">${d.businessName}</strong> has been cancelled.`;
 
   return layout(
     title,
     `
     <div style="display:inline-block;background:${accent}20;border:1px solid ${accent}40;border-radius:6px;padding:4px 12px;margin-bottom:20px;">
-      <span style="font-size:13px;font-weight:600;color:${accent};text-transform:uppercase;letter-spacing:0.5px;">
-        ${status}
-      </span>
+      <span style="font-size:13px;font-weight:600;color:${accent};text-transform:uppercase;letter-spacing:0.5px;">${status}</span>
     </div>
-
     <h1 style="margin:0 0 8px;font-size:24px;color:#f3f4f6;">${title}</h1>
     <p style="margin:0 0 4px;font-size:15px;color:#9ca3af;">
       Hi <strong style="color:#e5e7eb;">${d.clientName}</strong>, ${message}
     </p>
-
     ${summaryTable(d)}
   `,
   );
@@ -185,14 +166,17 @@ function bookingStatusHtml(
 // ─── Public send functions ─────────────────────────────────────────────────
 
 export async function sendBookingCreated(d: BookingEmailData) {
+  const resend = getResend();
+  if (!resend) return; // skip silently if RESEND_API_KEY not set
+
   await Promise.all([
-    getResend().emails.send({
+    resend.emails.send({
       from: FROM,
       to: d.clientEmail,
       subject: `Booking received — ${d.businessName}`,
       html: bookingCreatedClientHtml(d),
     }),
-    getResend().emails.send({
+    resend.emails.send({
       from: FROM,
       to: d.ownerEmail,
       subject: `New booking: ${d.clientName} — ${formatDate(d.date)}`,
@@ -205,6 +189,9 @@ export async function sendBookingStatusUpdate(
   d: BookingEmailData,
   status: "confirmed" | "cancelled",
 ) {
+  const resend = getResend();
+  if (!resend) return; // skip silently if RESEND_API_KEY not set
+
   const subject =
     status === "confirmed"
       ? `Booking confirmed — ${d.businessName}`
