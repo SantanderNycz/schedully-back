@@ -1,7 +1,13 @@
-import { Resend } from 'resend';
+import { Resend } from "resend";
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY!);
+}
+
+export { getResend };
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.EMAIL_FROM || 'Schedully <noreply@schedully.app>';
+const FROM = process.env.EMAIL_FROM || "Schedully <noreply@schedully.app>";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -11,9 +17,9 @@ export interface BookingEmailData {
   ownerEmail: string;
   businessName: string;
   serviceName: string;
-  date: string;       // YYYY-MM-DD
-  startTime: string;  // HH:MM
-  endTime: string;    // HH:MM
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
   price: string;
   notes?: string;
 }
@@ -21,19 +27,19 @@ export interface BookingEmailData {
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 function formatDate(date: string) {
-  return new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+  return new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }
 
 function formatTime(time: string) {
-  const [h, m] = time.split(':').map(Number);
-  const ampm = h >= 12 ? 'PM' : 'AM';
+  const [h, m] = time.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
   const hour = h % 12 || 12;
-  return `${hour}:${m.toString().padStart(2, '0')} ${ampm}`;
+  return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 
 // ─── Base layout ───────────────────────────────────────────────────────────
@@ -94,18 +100,20 @@ function detailRow(label: string, value: string) {
 
 function summaryTable(d: BookingEmailData) {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
-    ${detailRow('Date', formatDate(d.date))}
-    ${detailRow('Time', `${formatTime(d.startTime)} – ${formatTime(d.endTime)}`)}
-    ${detailRow('Service', d.serviceName)}
-    ${detailRow('Price', `$${parseFloat(d.price).toFixed(2)}`)}
-    ${d.notes ? detailRow('Notes', d.notes) : ''}
+    ${detailRow("Date", formatDate(d.date))}
+    ${detailRow("Time", `${formatTime(d.startTime)} – ${formatTime(d.endTime)}`)}
+    ${detailRow("Service", d.serviceName)}
+    ${detailRow("Price", `$${parseFloat(d.price).toFixed(2)}`)}
+    ${d.notes ? detailRow("Notes", d.notes) : ""}
   </table>`;
 }
 
 // ─── Email: booking created → client ──────────────────────────────────────
 
 function bookingCreatedClientHtml(d: BookingEmailData) {
-  return layout('Booking Received', `
+  return layout(
+    "Booking Received",
+    `
     <h1 style="margin:0 0 8px;font-size:24px;color:#f3f4f6;">Booking received</h1>
     <p style="margin:0 0 4px;font-size:15px;color:#9ca3af;">
       Hi <strong style="color:#e5e7eb;">${d.clientName}</strong>, your booking at
@@ -117,13 +125,16 @@ function bookingCreatedClientHtml(d: BookingEmailData) {
     <p style="margin:0;font-size:13px;color:#6b7280;">
       You'll receive another email once the business confirms your appointment.
     </p>
-  `);
+  `,
+  );
 }
 
 // ─── Email: new booking → owner ────────────────────────────────────────────
 
 function bookingCreatedOwnerHtml(d: BookingEmailData) {
-  return layout('New Booking', `
+  return layout(
+    "New Booking",
+    `
     <h1 style="margin:0 0 8px;font-size:24px;color:#f3f4f6;">New booking</h1>
     <p style="margin:0 0 4px;font-size:15px;color:#9ca3af;">
       <strong style="color:#e5e7eb;">${d.clientName}</strong> (${d.clientEmail}) just booked
@@ -135,20 +146,26 @@ function bookingCreatedOwnerHtml(d: BookingEmailData) {
     <p style="margin:0;font-size:13px;color:#6b7280;">
       Log into your dashboard to confirm or cancel this booking.
     </p>
-  `);
+  `,
+  );
 }
 
 // ─── Email: status updated → client ────────────────────────────────────────
 
-function bookingStatusHtml(d: BookingEmailData, status: 'confirmed' | 'cancelled') {
-  const isConfirmed = status === 'confirmed';
-  const accent = isConfirmed ? '#22c55e' : '#ef4444';
-  const title = isConfirmed ? 'Booking confirmed' : 'Booking cancelled';
+function bookingStatusHtml(
+  d: BookingEmailData,
+  status: "confirmed" | "cancelled",
+) {
+  const isConfirmed = status === "confirmed";
+  const accent = isConfirmed ? "#22c55e" : "#ef4444";
+  const title = isConfirmed ? "Booking confirmed" : "Booking cancelled";
   const message = isConfirmed
     ? `Your appointment at <strong style="color:#f59e0b;">${d.businessName}</strong> has been confirmed. See you there!`
     : `Your appointment at <strong style="color:#f59e0b;">${d.businessName}</strong> has been cancelled. Please contact the business if you have questions.`;
 
-  return layout(title, `
+  return layout(
+    title,
+    `
     <div style="display:inline-block;background:${accent}20;border:1px solid ${accent}40;border-radius:6px;padding:4px 12px;margin-bottom:20px;">
       <span style="font-size:13px;font-weight:600;color:${accent};text-transform:uppercase;letter-spacing:0.5px;">
         ${status}
@@ -161,20 +178,21 @@ function bookingStatusHtml(d: BookingEmailData, status: 'confirmed' | 'cancelled
     </p>
 
     ${summaryTable(d)}
-  `);
+  `,
+  );
 }
 
 // ─── Public send functions ─────────────────────────────────────────────────
 
 export async function sendBookingCreated(d: BookingEmailData) {
   await Promise.all([
-    resend.emails.send({
+    getResend().emails.send({
       from: FROM,
       to: d.clientEmail,
       subject: `Booking received — ${d.businessName}`,
       html: bookingCreatedClientHtml(d),
     }),
-    resend.emails.send({
+    getResend().emails.send({
       from: FROM,
       to: d.ownerEmail,
       subject: `New booking: ${d.clientName} — ${formatDate(d.date)}`,
@@ -185,10 +203,10 @@ export async function sendBookingCreated(d: BookingEmailData) {
 
 export async function sendBookingStatusUpdate(
   d: BookingEmailData,
-  status: 'confirmed' | 'cancelled'
+  status: "confirmed" | "cancelled",
 ) {
   const subject =
-    status === 'confirmed'
+    status === "confirmed"
       ? `Booking confirmed — ${d.businessName}`
       : `Booking cancelled — ${d.businessName}`;
 
