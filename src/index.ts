@@ -48,10 +48,12 @@ app.use("/api/billing", billingRoutes);
 app.use(
   (
     err: Error,
-    _req: express.Request,
+    req: express.Request,
     res: express.Response,
     _next: express.NextFunction,
   ) => {
+    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.header("Access-Control-Allow-Credentials", "true");
     console.error(err.stack);
     res.status(500).json({ error: "Something went wrong" });
   },
