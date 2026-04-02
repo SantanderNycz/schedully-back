@@ -56,28 +56,32 @@ router.get('/public/:slug', async (req: Request, res: Response) => {
 
 // POST /api/availability — replace entire weekly schedule
 router.post('/', authenticate, requireRole('owner'), async (req: Request, res: Response) => {
-  const parsed = availabilitySchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    const parsed = availabilitySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const business = await getOwnerBusiness(req.user!.userId);
-  if (!business) return res.status(404).json({ error: 'Business not found' });
+    const business = await getOwnerBusiness(req.user!.userId);
+    if (!business) return res.status(404).json({ error: 'Business not found' });
 
-  // Delete existing and insert new atomically — replace strategy
-  await db.transaction(async (tx) => {
-    await tx.delete(availabilities).where(eq(availabilities.businessId, business.id));
+    // Delete existing then insert new (sequential — neon-http doesn't support transactions)
+    await db.delete(availabilities).where(eq(availabilities.businessId, business.id));
+
     if (parsed.data.slots.length > 0) {
-      await tx.insert(availabilities).values(
+      await db.insert(availabilities).values(
         parsed.data.slots.map((slot) => ({ ...slot, businessId: business.id }))
       );
     }
-  });
 
-  const result = await db.query.availabilities.findMany({
-    where: eq(availabilities.businessId, business.id),
-    orderBy: (a, { asc }) => [asc(a.dayOfWeek)],
-  });
+    const result = await db.query.availabilities.findMany({
+      where: eq(availabilities.businessId, business.id),
+      orderBy: (a, { asc }) => [asc(a.dayOfWeek)],
+    });
 
-  return res.json(result);
+    return res.json(result);
+  } catch (err) {
+    console.error('Availability save error:', err);
+    return res.status(500).json({ error: 'Failed to save availability' });
+  }
 });
 
 export default router;
