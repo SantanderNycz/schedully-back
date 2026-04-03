@@ -72,12 +72,8 @@ router.post('/', authenticate, requireRole('owner'), async (req: Request, res: R
       );
     }
 
-    const result = await db.query.availabilities.findMany({
-      where: eq(availabilities.businessId, business.id),
-      orderBy: (a, { asc }) => [asc(a.dayOfWeek)],
-    });
-
-    return res.json(result);
+    // Return the saved slots directly — avoids an extra DB round-trip
+    return res.json(parsed.data.slots);
   } catch (err) {
     console.error('Availability save error:', err);
     return res.status(500).json({ error: 'Failed to save availability' });
