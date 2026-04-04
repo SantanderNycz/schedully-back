@@ -65,15 +65,12 @@ router.post('/', authenticate, requireRole('owner'), async (req: Request, res: R
 
     const rows = parsed.data.slots.map((slot) => ({ ...slot, businessId: business.id }));
 
-    // Use db.batch() — sends DELETE + INSERT in one HTTP round-trip to Neon
-    if (rows.length > 0) {
-      await db.batch([
-        db.delete(availabilities).where(eq(availabilities.businessId, business.id)),
-        db.insert(availabilities).values(rows),
-      ]);
-    } else {
-      await db.delete(availabilities).where(eq(availabilities.businessId, business.id));
-    }
+    await db.transaction(async (tx) => {
+      await tx.delete(availabilities).where(eq(availabilities.businessId, business.id));
+      if (rows.length > 0) {
+        await tx.insert(availabilities).values(rows);
+      }
+    });
 
     return res.json(parsed.data.slots);
   } catch (err) {
