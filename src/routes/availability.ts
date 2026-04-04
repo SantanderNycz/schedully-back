@@ -56,6 +56,7 @@ router.get('/public/:slug', async (req: Request, res: Response) => {
 
 // POST /api/availability — replace entire weekly schedule
 router.post('/', authenticate, requireRole('owner'), async (req: Request, res: Response) => {
+  console.log('[availability] POST received, user:', req.user?.userId);
   try {
     const parsed = availabilitySchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -65,13 +66,13 @@ router.post('/', authenticate, requireRole('owner'), async (req: Request, res: R
 
     const rows = parsed.data.slots.map((slot) => ({ ...slot, businessId: business.id }));
 
-    await db.transaction(async (tx) => {
-      await tx.delete(availabilities).where(eq(availabilities.businessId, business.id));
-      if (rows.length > 0) {
-        await tx.insert(availabilities).values(rows);
-      }
-    });
-
+    console.log('[availability] deleting old slots for business:', business.id);
+    await db.delete(availabilities).where(eq(availabilities.businessId, business.id));
+    if (rows.length > 0) {
+      console.log('[availability] inserting', rows.length, 'new slots');
+      await db.insert(availabilities).values(rows);
+    }
+    console.log('[availability] save complete');
     return res.json(parsed.data.slots);
   } catch (err) {
     console.error('Availability save error:', err);
