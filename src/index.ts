@@ -6,6 +6,7 @@ import servicesRoutes from "./routes/services";
 import availabilityRoutes from "./routes/availability";
 import bookingsRoutes from "./routes/bookings";
 import billingRoutes, { webhookHandler } from "./routes/billing";
+import businessesRoutes from "./routes/businesses";
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ app.use("/api/services", servicesRoutes);
 app.use("/api/availability", availabilityRoutes);
 app.use("/api/bookings", bookingsRoutes);
 app.use("/api/billing", billingRoutes);
+app.use("/api/businesses", businessesRoutes);
 
 app.use(
   (
